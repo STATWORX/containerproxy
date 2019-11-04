@@ -297,6 +297,7 @@
 						<exclude>LICENSE_HEADER</exclude>
 						<exclude>README.md</exclude>
 						<exclude>.gitignore</exclude>
+						<exclude>.idea/**</exclude>
 					</excludes>
 				</configuration>
 			</plugin>
