@@ -20,39 +20,42 @@
  */
 package eu.openanalytics.containerproxy.ui;
 
-import java.io.ByteArrayOutputStream;
-import java.io.PrintWriter;
-import java.util.HashMap;
-import java.util.Map;
-
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
+import eu.openanalytics.containerproxy.api.BaseController;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.ModelMap;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.util.NestedServletException;
 
-import eu.openanalytics.containerproxy.api.BaseController;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.ByteArrayOutputStream;
+import java.io.PrintWriter;
+import java.util.HashMap;
+import java.util.Map;
 
 @Controller
 @RequestMapping("/error")
 public class ErrorController extends BaseController implements org.springframework.boot.web.servlet.error.ErrorController {
-	
+
+
 	@RequestMapping(produces = "text/html")
 	public String handleError(ModelMap map, HttpServletRequest request, HttpServletResponse response) {
 		Throwable exception = (Throwable) request.getAttribute("javax.servlet.error.exception");
 		String[] msg = createMsgStack(exception);
-		
+
 		if (exception == null) msg[0] = HttpStatus.valueOf(response.getStatus()).getReasonPhrase();
 
 		map.put("message", msg[0]);
 		map.put("stackTrace", msg[1]);
 		map.put("status", response.getStatus());
-		
+
+		if (exception == null)
+			return "error_no_details";
+
 		return "error";
 	}
 	
