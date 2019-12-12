@@ -22,22 +22,21 @@ package eu.openanalytics.containerproxy.service;
 
 import java.io.OutputStream;
 import java.net.URI;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.BiConsumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import javax.inject.Inject;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.core.env.Environment;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
@@ -92,11 +91,25 @@ public class ProxyService {
 	
 	@Inject
 	private LogService logService;
+
+	@Inject
+	private Environment environment;
 	
 	@PreDestroy
 	public void shutdown() {
 		containerKiller.shutdown();
 		for (Proxy proxy: getProxies(null, true)) backend.stopProxy(proxy);
+	}
+
+	@PostConstruct
+	public void create() {
+		Boolean enabled = Boolean.valueOf(environment.getProperty("proxy.app-buffer.enabled", "false"));
+		Integer desiredBufferSize = Integer.valueOf(environment.getProperty("proxy.app-buffer.buffersize", "1"));
+		if(enabled) {
+			Thread appBuffer = new Thread(new ApplicationBuffer(desiredBufferSize), ApplicationBuffer.class.getSimpleName());
+			appBuffer.setDaemon(true);
+			appBuffer.start();
+		}
 	}
 	
 	/**
@@ -159,7 +172,12 @@ public class ProxyService {
 	public Proxy getProxy(String id) {
 		return findProxy(proxy -> proxy.getId().equals(id), true);
 	}
-	
+
+	public Proxy reassignProxy(Proxy proxy){
+		proxy.setUserId(userService.getCurrentUserId());
+		return proxy;
+	}
+
 	/**
 	 * Find The first proxy that matches the given filter.
 	 * 
@@ -263,6 +281,64 @@ public class ProxyService {
 		
 		for (Entry<String, URI> target: proxy.getTargets().entrySet()) {
 			mappingManager.removeMapping(target.getKey());
+		}
+	}
+
+	private class ApplicationBuffer implements Runnable{
+
+		int bufferSize = 0;
+
+		public ApplicationBuffer (int bufferSize){
+			this.bufferSize = bufferSize;
+		}
+
+		@Override
+		public void run() {
+			try {
+				Thread.sleep(10000);
+			} catch (InterruptedException e) {
+			}
+			while(true){
+				try{
+					ProxySpec[] proxySpecs = getProxySpecs(null, true).toArray(new ProxySpec[0]);
+					List<Proxy> proxies = getProxies(proxy -> proxy.getUserId() == null, true);
+
+					Map<String, Long> runningNonAssigned = getProxies(proxy -> proxy.getUserId() == null, true).stream().map(x -> x.getSpec().getId()).collect(Collectors.groupingBy(f -> f, Collectors.counting()));
+					Map<String, Integer[]> stats = runningNonAssigned.entrySet().stream().collect(Collectors.toMap(f -> f.getKey(), f-> new Integer[]{f.getValue().intValue(),0}));
+					for (ProxySpec spec: proxySpecs) {
+                        // desired could be fetched from specs once the property is added
+                        int desired = bufferSize;
+					    if (!runningNonAssigned.containsKey(spec.getId())){
+							stats.put(spec.getId(),new Integer[]{0,desired});
+						}else{
+						    stats.put(spec.getId(),new Integer[]{runningNonAssigned.get(spec.getId()).intValue(),desired});
+                        }
+					}
+
+					log.debug("STATS:"+String.join(",",stats.entrySet().stream().map(f -> String.format("(%s,%d,%d)",f.getKey(),f.getValue()[0],f.getValue()[1])).collect(Collectors.toList())));
+
+					for (Entry<String,Integer[]> stat:stats.entrySet()){
+						int diff = stat.getValue()[0] - stat.getValue()[1];
+						if(diff < 0) {
+							Optional<ProxySpec> spe = Arrays.stream(proxySpecs).filter(p -> p.getId().equals(stat.getKey())).findFirst();
+							if (spe.isPresent())
+								startProxy(spe.get(), true);
+						}else if (diff > 0){
+							Optional<Proxy> first = proxies.stream().filter(p -> p.getSpec().getId().equals(stat.getKey())).findFirst();
+							if(first.isPresent())
+								stopProxy(first.get(), true,true );
+						}
+					}
+
+
+				}catch(Throwable t){
+					log.error("Error in "+ this.getClass().getSimpleName(),t);
+				}
+				try{
+					Thread.sleep(5000);
+				}catch (InterruptedException e){}
+
+			}
 		}
 	}
 

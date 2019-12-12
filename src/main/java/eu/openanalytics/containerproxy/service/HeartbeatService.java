@@ -167,7 +167,7 @@ public class HeartbeatService {
 				if (enabled) {
 					try {
 						long currentTimestamp = System.currentTimeMillis();
-						for (Proxy proxy: proxyService.getProxies(null, true)) {
+						for (Proxy proxy: proxyService.getProxies(p-> p.getUserId() != null, true)) {
 							if (proxy.getStatus() != ProxyStatus.Up) continue;
 							
 							Long lastHeartbeat = proxyHeartbeats.get(proxy.getId());

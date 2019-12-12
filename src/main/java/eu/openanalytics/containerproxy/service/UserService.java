@@ -144,6 +144,7 @@ public class UserService implements ApplicationListener<AbstractAuthenticationEv
 
 	public boolean isOwner(Authentication auth, Proxy proxy) {
 		if (auth == null || proxy == null) return false;
+		if (proxy.getUserId() == null) return false;
 		return proxy.getUserId().equals(getUserId(auth));
 	}
 	
