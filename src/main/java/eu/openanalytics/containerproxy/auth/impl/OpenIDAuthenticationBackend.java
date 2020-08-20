@@ -20,10 +20,7 @@
  */
 package eu.openanalytics.containerproxy.auth.impl;
 
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import javax.inject.Inject;
@@ -47,6 +44,7 @@ import org.springframework.security.oauth2.client.registration.InMemoryClientReg
 import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestRedirectFilter;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.oidc.OidcIdToken;
+import org.springframework.security.oauth2.core.oidc.OidcUserInfo;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.security.oauth2.core.oidc.user.OidcUserAuthority;
 
@@ -144,6 +142,7 @@ public class OpenIDAuthenticationBackend implements IAuthenticationBackend {
 				.jwkSetUri(environment.getProperty("proxy.openid.jwks-url"))
 				.clientId(environment.getProperty("proxy.openid.client-id"))
 				.clientSecret(environment.getProperty("proxy.openid.client-secret"))
+				.userInfoUri(environment.getProperty("proxy.openid.userinfo-url"))
 				.build();
 		
 		return new InMemoryClientRegistrationRepository(Collections.singletonList(client));
@@ -159,18 +158,42 @@ public class OpenIDAuthenticationBackend implements IAuthenticationBackend {
 				for (GrantedAuthority auth: authorities) {
 					if (auth instanceof OidcUserAuthority) {
 						OidcIdToken idToken = ((OidcUserAuthority) auth).getIdToken();
-						
+						OidcUserInfo userInfo = ((OidcUserAuthority) auth).getUserInfo();
+
+						if (log.isDebugEnabled()) {
+							for (Map.Entry<String, Object> entry : userInfo.getClaims().entrySet()) {
+								log.debug(String.format("Found claim in UserInfo response %s: %s", entry.getKey(), entry.getValue()));
+							}
+						}
+
 						if (log.isDebugEnabled()) {
 							String lineSep = System.getProperty("line.separator");
 							String claims = idToken.getClaims().entrySet().stream()
-								.map(e -> String.format("%s -> %s", e.getKey(), e.getValue()))
-								.collect(Collectors.joining(lineSep));
+									.map(e -> String.format("%s -> %s", e.getKey(), e.getValue()))
+									.collect(Collectors.joining(lineSep));
 							log.debug(String.format("Checking for roles in claim '%s'. Available claims in ID token:%s%s",
 									rolesClaimName, lineSep, claims));
-							
+
 						}
-						
+
 						List<String> roles = idToken.getClaimAsStringList(rolesClaimName);
+						List<String> userInfoRoles = userInfo.getClaimAsStringList(rolesClaimName);
+						if (userInfoRoles != null){
+							if (roles == null){
+								roles = userInfoRoles;
+							}else{
+								roles.addAll(userInfoRoles);
+							}
+						}else{
+							String userInfoRole = userInfo.getClaimAsString(rolesClaimName);
+							if (userInfoRole != null){
+								if (roles == null){
+									roles = new ArrayList<>();
+								}
+								roles.add(userInfoRole);
+							}
+						}
+
 						if (roles == null) continue;
 						for (String role: roles) {
 							String mappedRole = role.toUpperCase().startsWith("ROLE_") ? role : "ROLE_" + role;
