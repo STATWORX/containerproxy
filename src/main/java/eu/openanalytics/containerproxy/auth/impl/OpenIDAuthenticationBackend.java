@@ -193,6 +193,7 @@ public class OpenIDAuthenticationBackend implements IAuthenticationBackend {
 				.jwkSetUri(environment.getProperty("proxy.openid.jwks-url"))
 				.clientId(environment.getProperty("proxy.openid.client-id"))
 				.clientSecret(environment.getProperty("proxy.openid.client-secret"))
+				.userInfoUri(environment.getProperty("proxy.openid.userinfo-url"))
 				.build();
 		
 		return new InMemoryClientRegistrationRepository(Collections.singletonList(client));
@@ -208,7 +209,15 @@ public class OpenIDAuthenticationBackend implements IAuthenticationBackend {
 				for (GrantedAuthority auth: authorities) {
 					if (auth instanceof OidcUserAuthority) {
 						OidcIdToken idToken = ((OidcUserAuthority) auth).getIdToken();
-						
+
+						OidcUserInfo userInfo = ((OidcUserAuthority) auth).getUserInfo();
+
+						if (log.isDebugEnabled()) {
+							for (Map.Entry<String, Object> entry : userInfo.getClaims().entrySet()) {
+								log.debug(String.format("Found claim in UserInfo response %s: %s", entry.getKey(), entry.getValue()));
+							}
+						}
+
 						if (log.isDebugEnabled()) {
 							String lineSep = System.getProperty("line.separator");
 							String claims = idToken.getClaims().entrySet().stream()
@@ -217,10 +226,30 @@ public class OpenIDAuthenticationBackend implements IAuthenticationBackend {
 							log.debug(String.format("Checking for roles in claim '%s'. Available claims in ID token (%d):%s%s",
 									rolesClaimName, idToken.getClaims().size(), lineSep, claims));
 						}
-						
+
 						Object claimValue = idToken.getClaims().get(rolesClaimName);
 
-						for (String role: parseRolesClaim(log, rolesClaimName, claimValue)) {
+						List<String> roles = parseRolesClaim(log, rolesClaimName, claimValue);
+						List<String> userInfoRoles = userInfo.getClaimAsStringList(rolesClaimName);
+						if (userInfoRoles != null){
+							if (roles == null){
+								roles = userInfoRoles;
+							}else{
+								roles.addAll(userInfoRoles);
+							}
+						}else{
+							String userInfoRole = userInfo.getClaimAsString(rolesClaimName);
+							if (userInfoRole != null){
+								if (roles == null){
+									roles = new ArrayList<>();
+								}
+								roles.add(userInfoRole);
+							}
+						}
+
+						if (roles == null) continue;
+
+						for (String role: roles) {
 							String mappedRole = role.toUpperCase().startsWith("ROLE_") ? role : "ROLE_" + role;
 							mappedAuthorities.add(new SimpleGrantedAuthority(mappedRole.toUpperCase()));
 						}
