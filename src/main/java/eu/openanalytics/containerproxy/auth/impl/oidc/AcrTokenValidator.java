@@ -20,6 +20,9 @@
  */
 package eu.openanalytics.containerproxy.auth.impl.oidc;
 
+import eu.openanalytics.containerproxy.auth.impl.OpenIDAuthenticationBackend;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.security.oauth2.client.oidc.authentication.OidcIdTokenValidator;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
 import org.springframework.security.oauth2.core.OAuth2Error;
@@ -32,6 +35,7 @@ public class AcrTokenValidator implements OAuth2TokenValidator<Jwt>{
 
     private final ClientRegistration registration;
     private final String acrExpectedValue;
+    private Logger log = LogManager.getLogger(AcrTokenValidator.class);
 
     public AcrTokenValidator(ClientRegistration registration, String acrExpectedValue){
         this.registration = registration;
@@ -42,8 +46,10 @@ public class AcrTokenValidator implements OAuth2TokenValidator<Jwt>{
     public OAuth2TokenValidatorResult validate(Jwt jwt) {
         OAuth2TokenValidatorResult allResult;
         OAuth2TokenValidatorResult validationResult = new OidcIdTokenValidator(registration).validate(jwt);
-        String acrValue = jwt.getClaimAsString("acr_values");
-        if (! acrValue.equals(this.acrExpectedValue)){
+        String acrValue = jwt.getClaimAsString("acr");
+        log.debug(String.format("Got id token %s", jwt));
+        log.debug(String.format("Found acr value in jwt: %s", acrValue));
+        if (acrValue == null || ! acrValue.equals(this.acrExpectedValue)){
             OAuth2Error[] errs = validationResult.getErrors().toArray(new OAuth2Error[validationResult.getErrors().size()+1]);
             errs[validationResult.getErrors().size()] = new OAuth2Error("123s");
             allResult = OAuth2TokenValidatorResult.failure(errs);

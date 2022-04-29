@@ -214,6 +214,7 @@ public class OpenIDAuthenticationBackend implements IAuthenticationBackend {
 
 						if (log.isDebugEnabled()) {
 							for (Map.Entry<String, Object> entry : userInfo.getClaims().entrySet()) {
+
 								log.debug(String.format("Found claim in UserInfo response %s: %s", entry.getKey(), entry.getValue()));
 							}
 						}
