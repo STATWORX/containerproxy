@@ -27,6 +27,8 @@ import eu.openanalytics.containerproxy.event.UserLoginEvent;
 import eu.openanalytics.containerproxy.event.UserLogoutEvent;
 import eu.openanalytics.containerproxy.model.runtime.Proxy;
 import eu.openanalytics.containerproxy.model.spec.ProxySpec;
+import eu.openanalytics.containerproxy.security.UserEncrypt;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.context.ApplicationEventPublisher;
@@ -46,9 +48,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
+import javax.annotation.PostConstruct;
 import javax.inject.Inject;
 import javax.servlet.http.HttpSession;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -60,9 +64,18 @@ public class UserService {
 
 	private final Logger log = LogManager.getLogger(UserService.class);
 
+
+
+	private String secretString;
+
+	@PostConstruct
+	public void init() {
+		secretString = environment.getProperty("proxy.user-encrypt-key");
+	}
+
 	@Inject
 	private Environment environment;
-
+	
 	@Inject
 	@Lazy
 	// Note: lazy needed to work around early initialization conflict 
@@ -162,7 +175,7 @@ public class UserService {
 	public void onAbstractAuthenticationFailureEvent(AbstractAuthenticationFailureEvent event) {
 		Authentication source = event.getAuthentication();
 		Exception e = event.getException();
-		log.info(String.format("Authentication failure [user: %s] [error: %s]", source.getName(), e.getMessage()));
+		log.info(String.format("Authentication failure [user: %s] [error: %s]", UserEncrypt.obfuscateUser(source.getName(),secretString), e.getMessage()));
 		String userId = getUserId(source);
 
 		applicationEventPublisher.publishEvent(new AuthFailedEvent(
@@ -176,7 +189,7 @@ public class UserService {
 		if (userId == null) return;
 
 		if (logoutStrategy != null) logoutStrategy.onLogout(userId);
-		log.info(String.format("User logged out [user: %s]", userId));
+		log.info(String.format("User logged out [user: %s]", UserEncrypt.obfuscateUser(userId,secretString)));
 
 		HttpSession session = ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest().getSession();
 		session.setAttribute(ATTRIBUTE_USER_INITIATED_LOGOUT, "true"); // mark that the user initiated the logout
@@ -193,8 +206,7 @@ public class UserService {
 	public void onAuthenticationSuccessEvent(AuthenticationSuccessEvent event) {
 		Authentication auth = event.getAuthentication();
 		String userName = auth.getName();
-
-		log.info(String.format("User logged in [user: %s]", userName));
+		log.info(String.format("User logged in [user: %s]", UserEncrypt.obfuscateUser(userName,secretString)));
 
 		String userId = getUserId(auth);
 		applicationEventPublisher.publishEvent(new UserLoginEvent(
@@ -219,7 +231,7 @@ public class UserService {
 
 				String userId = securityContext.getAuthentication().getName();
 
-				log.info(String.format("User logged out [user: %s]", userId));
+				log.info(String.format("User logged out [user: %s]", UserEncrypt.obfuscateUser(userId,secretString)));
 				applicationEventPublisher.publishEvent(new UserLogoutEvent(
 						this,
 						userId,
@@ -227,7 +239,7 @@ public class UserService {
 						true
 				));
 			} else if (authBackend.getName().equals("none")) {
-				log.info(String.format("Anonymous user logged out [user: %s]", event.getSession().getId()));
+				log.info(String.format("Anonymous user logged out [user: %s]", UserEncrypt.obfuscateUser(event.getSession().getId(),secretString)));
 				applicationEventPublisher.publishEvent(new UserLogoutEvent(
 						this,
 						event.getSession().getId(),
@@ -240,8 +252,8 @@ public class UserService {
 
 	@EventListener
 	public void onHttpSessionCreated(HttpSessionCreatedEvent event) {
-		if (authBackend.getName().equals("none")) {
-			log.info(String.format("Anonymous user logged in [user: %s]", event.getSession().getId()));
+		if (authBackend.getName().equals("none")) {			
+			log.info(String.format("Anonymous user logged in [user: %s]", UserEncrypt.obfuscateUser(event.getSession().getId(),secretString)));
 			applicationEventPublisher.publishEvent(new UserLoginEvent(
 					this,
 					event.getSession().getId(),

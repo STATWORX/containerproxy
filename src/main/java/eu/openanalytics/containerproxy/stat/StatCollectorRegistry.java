@@ -54,6 +54,10 @@ class StatCollectorFactory {
 		log.info(String.format("Enabled. Sending usage statistics to %s.", baseURL));
 
 		if (baseURL.toLowerCase().contains("/write?db=")) {
+			// TODO: extend class for logging additonal metrics
+			// like:
+			// if key "proxy.extend-logging" True, return InfluxDBCollectorExtendedLogging.class
+			// else:
 			return applicationContext.getAutowireCapableBeanFactory().createBean(InfluxDBCollector.class);
 		} else if (baseURL.toLowerCase().startsWith("jdbc")) {
 			return applicationContext.getAutowireCapableBeanFactory().createBean(JDBCCollector.class);
@@ -61,7 +65,7 @@ class StatCollectorFactory {
 			return applicationContext.getAutowireCapableBeanFactory().createBean(Micrometer.class);
 		} else {
 			throw new IllegalArgumentException(String.format("Base url for statistics contains an unrecognized values, baseURL %s.", baseURL));
-		}
+		}		
 	}
 	
 }

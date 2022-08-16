@@ -38,6 +38,7 @@ public abstract class AbstractDbCollector implements IStatCollector {
         writeToDb(event.getTimestamp(), event.getUserId(), "Login", null);
     }
 
+    // TODO: extend class with write login count
     @EventListener
     public void onProxyStartEvent(ProxyStartEvent event) throws IOException {
         writeToDb(event.getTimestamp(), event.getUserId(), "ProxyStart", event.getSpecId());

@@ -24,15 +24,20 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.Base64;
 import java.util.Optional;
 
+import eu.openanalytics.containerproxy.security.UserEncrypt;
 import eu.openanalytics.containerproxy.event.*;
 import org.apache.commons.io.IOUtils;
 
 import eu.openanalytics.containerproxy.stat.IStatCollector;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.env.Environment;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import javax.annotation.PostConstruct;
 import javax.inject.Inject;
@@ -44,11 +49,15 @@ import javax.inject.Inject;
  */
 public class InfluxDBCollector extends AbstractDbCollector {
 
+	
+
 	private String destination;
+	private String secretString;
 
 	@PostConstruct
 	public void init() {
 		destination = environment.getProperty("proxy.usage-stats-url");
+		secretString = environment.getProperty("proxy.user-encrypt-key");
 	}
 
 	@Inject
@@ -56,8 +65,11 @@ public class InfluxDBCollector extends AbstractDbCollector {
 
 	@Override
 	protected void writeToDb(long timestamp, String userId, String type, String data) throws IOException {
+
+		String encryptedID = UserEncrypt.obfuscateUser(userId.replace(" ", "\\ "),secretString);
+		
 		String body = String.format("event,username=%s,type=%s data=\"%s\"",
-				userId.replace(" ", "\\ "),
+				encryptedID,
 				type.replace(" ", "\\ "),
 				Optional.ofNullable(data).orElse(""));
 
@@ -77,4 +89,40 @@ public class InfluxDBCollector extends AbstractDbCollector {
 			throw new IOException(new String(bos.toByteArray()));
 		}
 	}
+
+
+// PoC of extend logging --> put in new class 
+// 
+// private final Logger logger = LogManager.getLogger(getClass());
+// 
+// 	@EventListener
+// 	public void onProxyStartEvent(ProxyStartEvent event) throws IOException {
+// 		logger.warn("ProxyStartEvent [user: {}, startupTime: {}]", event.getUserId(), event.getStartupTime());
+// 		String body = String.format("event,username=%s,type=%s data=\"%s\"",
+// 		"test",
+// 		"test",
+// 		"test");
+
+// 		HttpURLConnection conn = (HttpURLConnection) new URL("http://influxdb:8086/write?db=shinyproxy_stats").openConnection();
+// 		conn.setRequestMethod("POST");
+// 		conn.setDoOutput(true);
+// 		try (DataOutputStream dos = new DataOutputStream(conn.getOutputStream())) {
+// 			dos.write(body.getBytes("UTF-8"));
+// 			dos.flush();
+// 		}
+// 		int responseCode = conn.getResponseCode();
+// 		if (responseCode == 204) {
+// 			// All is well.
+// 		} else {
+// 			ByteArrayOutputStream bos = new ByteArrayOutputStream();
+// 			IOUtils.copy(conn.getErrorStream(), bos);
+// 			throw new IOException(new String(bos.toByteArray()));
+// }
+// 	}
+
+
+
+
 }
+
+
