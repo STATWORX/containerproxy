@@ -22,6 +22,7 @@ package eu.openanalytics.containerproxy.service.hearbeat;
 
 import eu.openanalytics.containerproxy.model.runtime.Proxy;
 import eu.openanalytics.containerproxy.model.runtime.ProxyStatus;
+import eu.openanalytics.containerproxy.security.UserEncrypt;
 import eu.openanalytics.containerproxy.service.ProxyService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -55,6 +56,7 @@ public class ActiveProxiesService implements IHeartbeatProcessor {
     private final Map<String, Long> proxyHeartbeats = Collections.synchronizedMap(new HashMap<>());
 
     private long defaultHeartbeatTimeout;
+    private String secretString;
 
     @Inject
     private Environment environment;
@@ -66,6 +68,7 @@ public class ActiveProxiesService implements IHeartbeatProcessor {
     public void init() {
         long cleanupInterval = 2 * environment.getProperty(PROP_RATE, Long.class, DEFAULT_RATE);
         defaultHeartbeatTimeout = environment.getProperty(PROP_TIMEOUT, Long.class, DEFAULT_TIMEOUT);
+        secretString = environment.getProperty("proxy.user-encrypt-key");
         new Timer().schedule(new TimerTask() {
             @Override
             public void run() {
@@ -121,7 +124,7 @@ public class ActiveProxiesService implements IHeartbeatProcessor {
 
         long proxySilence = currentTimestamp - lastHeartbeat;
         if (proxySilence > heartbeatTimeout) {
-            log.info(String.format("Releasing inactive proxy [user: %s] [spec: %s] [id: %s] [silence: %dms]", proxy.getUserId(), proxy.getSpec().getId(), proxy.getId(), proxySilence));
+            log.info(String.format("Releasing inactive proxy [user: %s] [spec: %s] [id: %s] [silence: %dms]", UserEncrypt.obfuscateUser(proxy.getUserId(),secretString), proxy.getSpec().getId(), proxy.getId(), proxySilence));
             proxyHeartbeats.remove(proxy.getId());
             proxyService.stopProxy(proxy, true, true);
         }

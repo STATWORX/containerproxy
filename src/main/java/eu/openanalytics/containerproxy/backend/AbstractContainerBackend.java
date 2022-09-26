@@ -43,6 +43,7 @@ import eu.openanalytics.containerproxy.model.runtime.runtimevalues.RuntimeValue;
 import eu.openanalytics.containerproxy.model.runtime.runtimevalues.UserGroupsKey;
 import eu.openanalytics.containerproxy.model.runtime.runtimevalues.UserIdKey;
 import eu.openanalytics.containerproxy.model.spec.ContainerSpec;
+import eu.openanalytics.containerproxy.security.UserEncrypt;
 import eu.openanalytics.containerproxy.service.AppRecoveryService;
 import eu.openanalytics.containerproxy.service.IdentifierService;
 import eu.openanalytics.containerproxy.service.UserService;
@@ -54,6 +55,7 @@ import org.apache.logging.log4j.Logger;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.core.env.Environment;
 
+import javax.annotation.PostConstruct;
 import javax.inject.Inject;
 import java.io.File;
 import java.io.FileInputStream;
@@ -117,6 +119,11 @@ public abstract class AbstractContainerBackend implements IContainerBackend {
 		useInternalNetwork = Boolean.valueOf(getProperty(PROPERTY_INTERNAL_NETWORKING, "false"));
 		privileged = Boolean.valueOf(getProperty(PROPERTY_PRIVILEGED, "false"));
 	}
+	private String secretString;
+	@PostConstruct
+	public void init() {
+		secretString = environment.getProperty("proxy.user-encrypt-key");
+	}
 
 	@Override
 	public SuccessOrFailure<Proxy> startProxy(Proxy proxy) throws ContainerProxyException {
@@ -129,7 +136,7 @@ public abstract class AbstractContainerBackend implements IContainerBackend {
 			doStartProxy(proxy);
 
 			if (proxy.getStatus().equals(ProxyStatus.Stopped) || proxy.getStatus().equals(ProxyStatus.Stopping)) {
-				log.info(String.format("Pending proxy cleaned up [user: %s] [spec: %s] [id: %s]", proxy.getUserId(), proxy.getSpec().getId(), proxy.getId()));
+				log.info(String.format("Pending proxy cleaned up [user: %s] [spec: %s] [id: %s]", UserEncrypt.obfuscateUser(proxy.getUserId(),secretString), proxy.getSpec().getId(), proxy.getId()));
 				stopProxy(proxy);
 				return SuccessOrFailure.createSuccess(proxy);
 			}

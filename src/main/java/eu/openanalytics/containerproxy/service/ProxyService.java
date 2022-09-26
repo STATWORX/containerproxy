@@ -56,6 +56,7 @@ import eu.openanalytics.containerproxy.model.runtime.Proxy;
 import eu.openanalytics.containerproxy.model.runtime.ProxyStatus;
 import eu.openanalytics.containerproxy.model.runtime.RuntimeSetting;
 import eu.openanalytics.containerproxy.model.spec.ProxySpec;
+import eu.openanalytics.containerproxy.security.UserEncrypt;
 import eu.openanalytics.containerproxy.spec.IProxySpecMergeStrategy;
 import eu.openanalytics.containerproxy.spec.IProxySpecProvider;
 import eu.openanalytics.containerproxy.spec.ProxySpecException;
@@ -107,12 +108,14 @@ public class ProxyService {
 	private boolean stopAppsOnShutdown;
 
 	private static final String PROPERTY_STOP_PROXIES_ON_SHUTDOWN = "proxy.stop-proxies-on-shutdown";
+	private String secretString;
 
 	@PostConstruct
 	public void init() {
 	    stopAppsOnShutdown = Boolean.parseBoolean(environment.getProperty(PROPERTY_STOP_PROXIES_ON_SHUTDOWN, "true"));
+		secretString = environment.getProperty("proxy.user-encrypt-key");
 	}
-
+	
 	@PreDestroy
 	public void shutdown() {
 		if (!stopAppsOnShutdown) {
@@ -289,7 +292,7 @@ public class ProxyService {
 
 		setupProxy(proxy);
 
-		log.info(String.format("Proxy activated [user: %s] [spec: %s] [id: %s]", proxy.getUserId(), spec.getId(), proxy.getId()));
+		log.info(String.format("Proxy activated [user: %s] [spec: %s] [id: %s]", UserEncrypt.obfuscateUser(proxy.getUserId(),secretString), spec.getId(), proxy.getId()));
 		applicationEventPublisher.publishEvent(new ProxyStartEvent(this, proxy.getUserId(), spec.getId(), Duration.ofMillis(proxy.getStartupTimestamp() - proxy.getCreatedTimestamp())));
 
 		return proxy;
@@ -314,7 +317,7 @@ public class ProxyService {
 			try {
 				backend.stopProxy(proxy);
 				logService.detach(proxy);
-				log.info(String.format("Proxy released [user: %s] [spec: %s] [id: %s]", proxy.getUserId(), proxy.getSpec().getId(), proxy.getId()));
+				log.info(String.format("Proxy released [user: %s] [spec: %s] [id: %s]", UserEncrypt.obfuscateUser(proxy.getUserId(),secretString), proxy.getSpec().getId(), proxy.getId()));
 				if (proxy.getStartupTimestamp() == 0) {
 					applicationEventPublisher.publishEvent(new ProxyStopEvent(this, proxy.getUserId(), proxy.getSpec().getId(), null));
 				} else {
@@ -343,7 +346,7 @@ public class ProxyService {
 
 		setupProxy(proxy);
 
-		log.info(String.format("Existing Proxy re-activated [user: %s] [spec: %s] [id: %s]", proxy.getUserId(), proxy.getSpec().getId(), proxy.getId()));
+		log.info(String.format("Existing Proxy re-activated [user: %s] [spec: %s] [id: %s]", UserEncrypt.obfuscateUser(proxy.getUserId(),secretString), proxy.getSpec().getId(), proxy.getId()));
 	}
 
 	/**

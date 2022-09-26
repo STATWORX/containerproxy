@@ -22,6 +22,8 @@ package eu.openanalytics.containerproxy.service;
 
 import eu.openanalytics.containerproxy.model.runtime.Proxy;
 import eu.openanalytics.containerproxy.model.runtime.ProxyStatus;
+import eu.openanalytics.containerproxy.security.UserEncrypt;
+
 import org.apache.commons.lang.time.DurationFormatUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -54,9 +56,12 @@ public class ProxyMaxLifetimeService {
 
     private Long defaultMaxLifetime;
 
+    private String secretString;
+
     @PostConstruct
     public void init() {
         defaultMaxLifetime = environment.getProperty(PROP_DEFAULT_PROXY_MAX_LIFETIME, Long.class, -1L);
+        secretString = environment.getProperty("proxy.user-encrypt-key");
 
         new Timer().schedule(new TimerTask() {
             @Override
@@ -72,7 +77,7 @@ public class ProxyMaxLifetimeService {
                 String uptime = DurationFormatUtils.formatDurationWords(
                         System.currentTimeMillis() - proxy.getCreatedTimestamp(),
                         true, false);
-                log.info(String.format("Forcefully releasing proxy because it reached the max lifetime [user: %s] [spec: %s] [id: %s] [uptime: %s]", proxy.getUserId(), proxy.getSpec().getId(), proxy.getId(), uptime));
+                log.info(String.format("Forcefully releasing proxy because it reached the max lifetime [user: %s] [spec: %s] [id: %s] [uptime: %s]", UserEncrypt.obfuscateUser(proxy.getUserId(),secretString), proxy.getSpec().getId(), proxy.getId(), uptime));
                 proxyService.stopProxy(proxy, true, true);
             }
         }
