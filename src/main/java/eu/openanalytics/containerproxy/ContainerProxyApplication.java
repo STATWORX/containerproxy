@@ -279,7 +279,8 @@ public class ContainerProxyApplication {
 		properties.put("management.health.redis.enabled", "false");
 		// enable Kubernetes probes
 		properties.put("management.endpoint.health.probes.enabled", true);
-
+		//
+		properties.put("management.endpoint.health.enabled", true);
 		// ====================
 
 		properties.put("spring.config.use-legacy-processing", true);

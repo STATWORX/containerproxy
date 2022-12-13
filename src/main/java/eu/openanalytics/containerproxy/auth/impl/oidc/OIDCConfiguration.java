@@ -29,6 +29,7 @@ import org.springframework.security.oauth2.client.registration.ClientRegistratio
 import org.springframework.security.oauth2.jwt.JwtDecoderFactory;
 
 import javax.inject.Inject;
+import javax.annotation.PostConstruct;
 
 @Configuration
 @ConditionalOnProperty(name="proxy.authentication", havingValue = "openid")
@@ -38,10 +39,9 @@ public class OIDCConfiguration {
     Environment environment;
 
     @Bean
-    public JwtDecoderFactory<ClientRegistration> customJwtDecoderFactory(){
-        String acrValue = environment.getProperty("openid.acr-value");
+    public JwtDecoderFactory<ClientRegistration> customJwtDecoderFactory(){ 
         OidcIdTokenDecoderFactory factory = new OidcIdTokenDecoderFactory();
-        factory.setJwtValidatorFactory(clientRegistration -> new AcrTokenValidator(clientRegistration, "daimler:idp:gas:strong"));
+        factory.setJwtValidatorFactory(clientRegistration -> new AcrTokenValidator(clientRegistration, environment.getProperty("proxy.openid.acr-value")));
         return factory;
     }
 
