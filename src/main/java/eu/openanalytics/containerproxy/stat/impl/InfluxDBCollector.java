@@ -22,7 +22,7 @@ package eu.openanalytics.containerproxy.stat.impl;
 
 import org.apache.commons.io.IOUtils;
 import org.springframework.core.env.Environment;
-
+import eu.openanalytics.containerproxy.service.UserEncrypt;
 import javax.annotation.PostConstruct;
 import javax.inject.Inject;
 import java.io.ByteArrayOutputStream;
@@ -47,8 +47,9 @@ public class InfluxDBCollector extends AbstractDbCollector {
 
 	@Override
 	protected void writeToDb(long timestamp, String userId, String type, String data) throws IOException {
+		String obfUserId = UserEncrypt.obfuscateUser(userId);
 		String body = String.format("event,username=%s,type=%s data=\"%s\"",
-				userId.replace(" ", "\\ "),
+				obfUserId.replace(" ", "\\ "),
 				type.replace(" ", "\\ "),
 				Optional.ofNullable(data).orElse(""));
 

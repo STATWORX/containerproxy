@@ -25,13 +25,18 @@ import org.springframework.context.ApplicationEvent;
 public class UserLoginEvent extends ApplicationEvent {
 
     private final String userId;
+    private final boolean isAdmin;
 
-    public UserLoginEvent(Object source, String userId) {
+
+    public UserLoginEvent(Object source, String userId, boolean isAdmin) {
         super(source);
+        this.isAdmin = isAdmin;
         this.userId = userId;
     }
 
-
+    public boolean getIsAdmin() {
+        return this.isAdmin;
+     }
     public String getUserId() {
         return userId;
     }

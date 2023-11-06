@@ -28,6 +28,7 @@ import eu.openanalytics.containerproxy.event.UserLogoutEvent;
 import eu.openanalytics.containerproxy.model.runtime.Proxy;
 import eu.openanalytics.containerproxy.model.spec.ProxySpec;
 import eu.openanalytics.containerproxy.util.Sha256;
+import eu.openanalytics.containerproxy.service.UserEncrypt;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.context.ApplicationEventPublisher;
@@ -62,7 +63,8 @@ public class UserService {
 	private final static String ATTRIBUTE_USER_INITIATED_LOGOUT = "SP_USER_INITIATED_LOGOUT";
 
 	private final Logger log = LogManager.getLogger(UserService.class);
-
+	
+	
 	@Inject
 	private Environment environment;
 
@@ -83,6 +85,8 @@ public class UserService {
 
 	private final Set<String> adminGroups = new HashSet<>();
 	private final Set<String> adminUsers = new HashSet<>();
+
+	private String secretString;
 
 	@PostConstruct
 	public void init() {
@@ -115,6 +119,13 @@ public class UserService {
 			}
 			adminUsers.add(userName);
 		}
+		this.secretString = this.environment.getProperty("proxy.user-encrypt-key");
+	}
+
+	public String getObfuscateUserId(Authentication auth) {
+		String userName = getUserId(auth);
+		return UserEncrypt.obfuscateUser(userName);
+		// return getUserId(getCurrentAuth());
 	}
 
 	public Set<String> getAdminGroups() {
@@ -204,6 +215,7 @@ public class UserService {
 			// Anonymous authentication: use the session id instead of the username.
 			return Sha256.hash(((WebAuthenticationDetails) auth.getDetails()).getSessionId());
 		}
+
 		return auth.getName();
 	}
 
@@ -211,7 +223,7 @@ public class UserService {
 	public void onAbstractAuthenticationFailureEvent(AbstractAuthenticationFailureEvent event) {
 		Authentication source = event.getAuthentication();
 		Exception e = event.getException();
-		log.info(String.format("Authentication failure [user: %s] [error: %s]", getUserId(source), e.getMessage()));
+		log.info(String.format("Authentication failure [user: %s] [error: %s]", getObfuscateUserId(source), e.getMessage()));
 		String userId = getUserId(source);
 
 		applicationEventPublisher.publishEvent(new AuthFailedEvent(
@@ -224,7 +236,7 @@ public class UserService {
 		if (userId == null) return;
 
 		if (logoutStrategy != null) logoutStrategy.onLogout(userId);
-		log.info(String.format("User logged out [user: %s]", userId));
+		log.info(String.format("User logged out [user: %s]", getObfuscateUserId(auth)));
 
 		HttpSession session = ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest().getSession();
 		session.setAttribute(ATTRIBUTE_USER_INITIATED_LOGOUT, "true"); // mark that the user initiated the logout
@@ -240,12 +252,14 @@ public class UserService {
 		Authentication auth = event.getAuthentication();
 		String userName = getUserId(auth);
 
-		log.info(String.format("User logged in [user: %s]", userName));
+		log.info(String.format("User logged in [user: %s]", getObfuscateUserId(auth)));
 
 		String userId = getUserId(auth);
+		Boolean isAdmin = isAdmin();
 		applicationEventPublisher.publishEvent(new UserLoginEvent(
 				this,
-				userId));
+				userId,
+				isAdmin));
 	}
 
 	@EventListener
@@ -265,7 +279,7 @@ public class UserService {
 				String userId = getUserId(securityContext.getAuthentication());
 				if (logoutStrategy != null) logoutStrategy.onLogout(userId);
 
-				log.info(String.format("User logged out [user: %s]", userId));
+				log.info(String.format("User logged out [user: %s]", getObfuscateUserId(securityContext.getAuthentication())));
 				applicationEventPublisher.publishEvent(new UserLogoutEvent(
 						this,
 						userId,
@@ -292,7 +306,8 @@ public class UserService {
 			log.info(String.format("Anonymous user logged in [user: %s]", userId));
 			applicationEventPublisher.publishEvent(new UserLoginEvent(
 					this,
-					userId));
+					userId,
+					isAdmin()));
 		}
 	}
 
