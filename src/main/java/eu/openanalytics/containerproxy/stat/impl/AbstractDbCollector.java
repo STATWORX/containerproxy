@@ -38,7 +38,7 @@ public abstract class AbstractDbCollector implements IStatCollector {
     @Inject
     protected UserService userService;
 
-    private boolean disableAdminCollector() {
+    protected boolean disableAdminCollector() {
         return !this.disableAdminLogging || !this.userService.isAdmin();
     }
 

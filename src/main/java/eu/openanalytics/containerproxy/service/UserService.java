@@ -28,7 +28,6 @@ import eu.openanalytics.containerproxy.event.UserLogoutEvent;
 import eu.openanalytics.containerproxy.model.runtime.Proxy;
 import eu.openanalytics.containerproxy.model.spec.ProxySpec;
 import eu.openanalytics.containerproxy.util.Sha256;
-import eu.openanalytics.containerproxy.service.UserEncrypt;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.context.ApplicationEventPublisher;
@@ -86,8 +85,6 @@ public class UserService {
 	private final Set<String> adminGroups = new HashSet<>();
 	private final Set<String> adminUsers = new HashSet<>();
 
-	private String secretString;
-
 	@PostConstruct
 	public void init() {
 		// load admin groups
@@ -119,7 +116,6 @@ public class UserService {
 			}
 			adminUsers.add(userName);
 		}
-		this.secretString = this.environment.getProperty("proxy.user-encrypt-key");
 	}
 
 	public String getObfuscateUserId(Authentication auth) {
