@@ -28,14 +28,9 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 
-import eu.openanalytics.containerproxy.auth.impl.KerberosAuthenticationBackend;
-import eu.openanalytics.containerproxy.auth.impl.KeycloakAuthenticationBackend;
-import eu.openanalytics.containerproxy.auth.impl.LDAPAuthenticationBackend;
 import eu.openanalytics.containerproxy.auth.impl.NoAuthenticationBackend;
 import eu.openanalytics.containerproxy.auth.impl.OpenIDAuthenticationBackend;
-import eu.openanalytics.containerproxy.auth.impl.SAMLAuthenticationBackend;
 import eu.openanalytics.containerproxy.auth.impl.SimpleAuthenticationBackend;
-import eu.openanalytics.containerproxy.auth.impl.SocialAuthenticationBackend;
 import eu.openanalytics.containerproxy.auth.impl.WebServiceAuthenticationBackend;
 
 /**
@@ -50,14 +45,6 @@ public class AuthenticationBackendFactory extends AbstractFactoryBean<IAuthentic
 	
 	@Inject
 	private ApplicationContext applicationContext;
-	
-	// These backends register some beans of their own, so must be instantiated here.
-	
-	@Inject
-	private KeycloakAuthenticationBackend keycloakBackend;
-	
-	@Inject
-	private SAMLAuthenticationBackend samlBackend;
 	
 	@Override
 	public Class<?> getObjectType() {
@@ -76,25 +63,12 @@ public class AuthenticationBackendFactory extends AbstractFactoryBean<IAuthentic
 		case SimpleAuthenticationBackend.NAME:
 			backend = new SimpleAuthenticationBackend();
 			break;
-		case LDAPAuthenticationBackend.NAME:
-			backend = new LDAPAuthenticationBackend();
-			break;
 		case OpenIDAuthenticationBackend.NAME:
 			backend = new OpenIDAuthenticationBackend();
-			break;
-		case SocialAuthenticationBackend.NAME:
-			backend = new SocialAuthenticationBackend();
-			break;
-		case KeycloakAuthenticationBackend.NAME:
-			return keycloakBackend;			
-		case KerberosAuthenticationBackend.NAME:
-			backend = new KerberosAuthenticationBackend();
-			break;
+			break;	
 		case WebServiceAuthenticationBackend.NAME:			
 			backend = new WebServiceAuthenticationBackend();
 			break;
-		case SAMLAuthenticationBackend.NAME:
-			return samlBackend;
 		}
 		if (backend == null) throw new RuntimeException("Unknown authentication type:" + type);
 		

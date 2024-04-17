@@ -29,7 +29,6 @@ import eu.openanalytics.containerproxy.service.UserService;
 import org.keycloak.KeycloakPrincipal;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.ldap.userdetails.LdapUserDetails;
-import org.springframework.security.saml.SAMLCredential;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -42,8 +41,6 @@ public class SpecExpressionContext {
     private ProxySpec proxySpec;
     private Proxy proxy;
     private OpenIDAuthenticationBackend.CustomNameOidcUser oicdUser;
-    private KeycloakPrincipal keycloakUser;
-    private SAMLCredential samlCredential;
     private LdapUserDetails ldapUser;
     private List<String> groups;
 
@@ -61,14 +58,6 @@ public class SpecExpressionContext {
 
     public OpenIDAuthenticationBackend.CustomNameOidcUser getOidcUser() {
         return oicdUser;
-    }
-
-    public KeycloakPrincipal getKeycloakUser() {
-        return keycloakUser;
-    }
-
-    public SAMLCredential getSamlCredential() {
-        return samlCredential;
     }
 
     public LdapUserDetails getLdapUser() {
@@ -147,12 +136,6 @@ public class SpecExpressionContext {
                 ctx.proxy = (Proxy) o;
             } else if (o instanceof OpenIDAuthenticationBackend.CustomNameOidcUser) {
                 ctx.oicdUser = (OpenIDAuthenticationBackend.CustomNameOidcUser) o;
-            } else if (o instanceof KeycloakPrincipal) {
-                ctx.keycloakUser = (KeycloakPrincipal) o;
-            } else if (o instanceof SAMLCredential) {
-                ctx.samlCredential = (SAMLCredential) o;
-            } else if (o instanceof LdapUserDetails) {
-                ctx.ldapUser = (LdapUserDetails) o;
             }
             if (o instanceof Authentication) {
                 ctx.groups = Arrays.asList(UserService.getGroups((Authentication) o));
