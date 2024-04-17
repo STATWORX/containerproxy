@@ -5,7 +5,7 @@
 
 	<groupId>eu.openanalytics</groupId>
 	<artifactId>containerproxy</artifactId>
-	<version>0.8.11-oidc</version>
+	<version>0.8.11-cdck</version>
 	<name>ContainerProxy</name>
 	<packaging>jar</packaging>
 
@@ -70,12 +70,6 @@
 
 	<dependencies>
 	<!-- FIXING SUB DEPENDENCIES -->
-		<!-- https://mvnrepository.com/artifact/org.keycloak/keycloak-core -->
-		<dependency>
-			<groupId>org.keycloak</groupId>
-			<artifactId>keycloak-core</artifactId>
-			<version>20.0.0</version>
-		</dependency>
 		<!-- https://mvnrepository.com/artifact/org.apache.santuario/xmlsec -->
 		<dependency>
 			<groupId>org.apache.santuario</groupId>
@@ -205,13 +199,6 @@
 		<dependency>
 			<groupId>com.h2database</groupId>
 			<artifactId>h2</artifactId>
-		</dependency>
-
-		<!-- Keycloak -->
-		<dependency>
-			<groupId>org.keycloak</groupId>
-			<artifactId>keycloak-spring-security-adapter</artifactId>
-			<version>13.0.1</version>
 		</dependency>
 
 		<!-- Docker -->
