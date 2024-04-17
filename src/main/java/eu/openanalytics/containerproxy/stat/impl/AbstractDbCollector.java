@@ -59,6 +59,13 @@ public abstract class AbstractDbCollector implements IStatCollector {
         // TODO
     }
 
+    @EventListener
+    public void onPbiClickEvent(PbiClickEvent event) throws IOException {
+       
+        writeToDb(event.getTimestamp(), event.getUserId(), "PbiClick", event.getDashboardId());
+ 
+    }
+
     protected abstract void writeToDb(long timestamp, String userId, String type, String data) throws IOException;
 
 }
