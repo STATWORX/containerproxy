@@ -21,6 +21,8 @@
 package eu.openanalytics.containerproxy.service;
 
 import eu.openanalytics.containerproxy.ContainerProxyException;
+import java.util.function.Predicate;
+import eu.openanalytics.containerproxy.security.UserEncrypt;
 import eu.openanalytics.containerproxy.ProxyFailedToStartException;
 import eu.openanalytics.containerproxy.ProxyStartValidationException;
 import eu.openanalytics.containerproxy.backend.dispatcher.ProxyDispatcherService;
@@ -63,6 +65,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -84,6 +87,7 @@ public class ProxyService {
     private final Logger log = LoggerFactory.getLogger(getClass());
     private final StructuredLogger slog = new StructuredLogger(log);
     private final Set<String> actionsInProgress = new HashSet<>();
+    private String secretString;
     @Inject
     protected IProxyTestStrategy testStrategy;
     protected Integer maxTotalInstances;
@@ -112,6 +116,7 @@ public class ProxyService {
     public void init() {
         stopAppsOnShutdown = Boolean.parseBoolean(environment.getProperty(PROPERTY_STOP_PROXIES_ON_SHUTDOWN, "true"));
         maxTotalInstances = environment.getProperty("proxy.max-total-instances", Integer.class, -1);
+        secretString = environment.getProperty("proxy.user-encrypt-key");
     }
 
     @PreDestroy
@@ -154,6 +159,22 @@ public class ProxyService {
             .filter(spec -> userService.canAccess(spec))
             .toList();
     }
+
+    public ProxySpec getProxySpec(String id) {
+		if (id == null || id.isEmpty()) return null;
+		return findProxySpec(spec -> spec.getId().equals(id), true);
+	}
+
+    public ProxySpec findProxySpec(Predicate<ProxySpec> filter, boolean ignoreAccessControl) {
+		return getProxySpecs(filter, ignoreAccessControl).stream().findAny().orElse(null);
+	}
+
+    public List<ProxySpec> getProxySpecs(Predicate<ProxySpec> filter, boolean ignoreAccessControl) {
+		return baseSpecProvider.getSpecs().stream()
+				.filter(spec -> ignoreAccessControl || userService.canAccess(spec))
+				.filter(spec -> filter == null || filter.test(spec))
+				.collect(Collectors.toList());
+	}
 
     /**
      * Find a proxy using its ID.
@@ -293,7 +314,7 @@ public class ProxyService {
             Proxy result = startOrResumeProxy(user, currentProxy, proxyStartupLog);
 
             if (result != null) {
-                slog.info(result, "Proxy activated");
+                log.info(String.format("Proxy activated [user: %s] [spec: %s] [id: %s]", UserEncrypt.obfuscateUser(user.getName(), secretString), spec.getId(), proxyId));
                 applicationEventPublisher.publishEvent(new ProxyStartEvent(result, proxyStartupLog.succeeded()));
 
                 // final check to see if the app was stopped

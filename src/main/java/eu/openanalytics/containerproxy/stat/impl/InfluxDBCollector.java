@@ -19,9 +19,10 @@
  * along with this program.  If not, see <http://www.apache.org/licenses/>
  */
 package eu.openanalytics.containerproxy.stat.impl;
-
+import javax.annotation.PostConstruct;
+import org.springframework.core.env.Environment;
 import org.apache.commons.io.IOUtils;
-
+import eu.openanalytics.containerproxy.security.UserEncrypt;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -29,7 +30,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
-
+import javax.inject.Inject;
 
 /**
  * E.g.:
@@ -38,6 +39,15 @@ import java.util.Optional;
 public class InfluxDBCollector extends AbstractDbCollector {
 
     private final String destination;
+    private String secretString;
+
+    @Inject
+	private Environment environment;
+
+    @PostConstruct
+	public void init() {
+		secretString = environment.getProperty("proxy.user-encrypt-key");
+	}
 
     public InfluxDBCollector(String url) {
         destination = url;
@@ -45,10 +55,13 @@ public class InfluxDBCollector extends AbstractDbCollector {
 
     @Override
     protected void writeToDb(long timestamp, String userId, String type, String data) throws IOException {
+        
+        String encryptedID = UserEncrypt.obfuscateUser(userId.replace(" ", "\\ "),secretString);
+
         String body = String.format("event,username=%s,type=%s data=\"%s\"",
-            userId.replace(" ", "\\ "),
-            type.replace(" ", "\\ "),
-            Optional.ofNullable(data).orElse(""));
+                            encryptedID,
+                            type.replace(" ", "\\ "),
+                            Optional.ofNullable(data).orElse(""));
 
         HttpURLConnection conn = (HttpURLConnection) new URL(destination).openConnection();
         conn.setRequestMethod("POST");

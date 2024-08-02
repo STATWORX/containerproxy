@@ -19,8 +19,6 @@
  * along with this program.  If not, see <http://www.apache.org/licenses/>
  */
 package eu.openanalytics.containerproxy.auth.impl.saml;
-
-import eu.openanalytics.containerproxy.auth.impl.SAMLAuthenticationBackend;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.ServletRequest;

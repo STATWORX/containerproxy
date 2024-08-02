@@ -49,7 +49,7 @@ import java.util.Objects;
 @JsonView(Views.Default.class)
 public class Proxy extends RuntimeValueStore {
 
-    String id;
+    public String id;
 
     @With
     ProxyStatus status;
@@ -58,7 +58,7 @@ public class Proxy extends RuntimeValueStore {
     long createdTimestamp;
 
     String userId;
-    String specId;
+    public String specId;
 
     String displayName;
 

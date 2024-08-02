@@ -20,13 +20,10 @@
  */
 package eu.openanalytics.containerproxy.auth;
 
-import eu.openanalytics.containerproxy.auth.impl.LDAPAuthenticationBackend;
 import eu.openanalytics.containerproxy.auth.impl.NoAuthenticationBackend;
 import eu.openanalytics.containerproxy.auth.impl.OpenIDAuthenticationBackend;
-import eu.openanalytics.containerproxy.auth.impl.SAMLAuthenticationBackend;
 import eu.openanalytics.containerproxy.auth.impl.SimpleAuthenticationBackend;
 import eu.openanalytics.containerproxy.auth.impl.WebServiceAuthenticationBackend;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.config.AbstractFactoryBean;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationEventPublisher;
@@ -53,8 +50,6 @@ public class AuthenticationBackendFactory extends AbstractFactoryBean<IAuthentic
     private ApplicationEventPublisher applicationEventPublisher;
 
     // These backends register some beans of their own, so must be instantiated here.
-    @Autowired(required = false)
-    private SAMLAuthenticationBackend samlBackend;
 
     @Override
     public Class<?> getObjectType() {
@@ -69,12 +64,8 @@ public class AuthenticationBackendFactory extends AbstractFactoryBean<IAuthentic
         switch (type) {
             case NoAuthenticationBackend.NAME -> backend = new NoAuthenticationBackend(applicationEventPublisher);
             case SimpleAuthenticationBackend.NAME -> backend = new SimpleAuthenticationBackend();
-            case LDAPAuthenticationBackend.NAME -> backend = new LDAPAuthenticationBackend();
             case OpenIDAuthenticationBackend.NAME -> backend = new OpenIDAuthenticationBackend();
             case WebServiceAuthenticationBackend.NAME -> backend = new WebServiceAuthenticationBackend(environment);
-            case SAMLAuthenticationBackend.NAME -> {
-                return samlBackend;
-            }
         }
         if (backend == null) throw new RuntimeException("Unknown authentication type:" + type);
 

@@ -56,6 +56,7 @@ import java.util.Properties;
 import java.util.function.BiConsumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import javax.annotation.PostConstruct;
 
 public abstract class AbstractContainerBackend implements IContainerBackend {
 
@@ -117,6 +118,12 @@ public abstract class AbstractContainerBackend implements IContainerBackend {
         privileged = getProperty(PROPERTY_PRIVILEGED, false);
         defaultTargetProtocol = getProperty(PROPERTY_CONTAINER_PROTOCOL, DEFAULT_TARGET_PROTOCOL);
     }
+
+    private String secretString;
+	@PostConstruct
+	public void init() {
+		secretString = environment.getProperty("proxy.user-encrypt-key");
+	}
 
     @Override
     public Proxy startProxy(Authentication user, Proxy proxy, ProxySpec proxySpec, ProxyStartupLog.ProxyStartupLogBuilder proxyStartupLogBuilder) throws ProxyFailedToStartException {

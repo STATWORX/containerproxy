@@ -21,6 +21,7 @@
 package eu.openanalytics.containerproxy.service;
 
 import com.github.benmanes.caffeine.cache.Cache;
+import eu.openanalytics.containerproxy.security.UserEncrypt;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.Scheduler;
 import eu.openanalytics.containerproxy.auth.IAuthenticationBackend;
@@ -51,6 +52,7 @@ import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
 import javax.annotation.PostConstruct;
+import java.util.Base64;
 import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -81,6 +83,7 @@ public class UserService {
     @Inject
     @Lazy
     private ProxyAccessControlService accessControlService;
+    private String secretString;
 
     public UserService() {
         // cache isAdmin status results for (at least) 60 minutes, since this never changes during the lifetime of a session
@@ -106,6 +109,7 @@ public class UserService {
     public void init() {
         // load admin groups
         // Support for old, non-array notation
+        secretString = environment.getProperty("proxy.user-encrypt-key");
         String singleGroup = environment.getProperty("proxy.admin-groups");
         if (singleGroup != null && !singleGroup.isEmpty()) {
             adminGroups.add(singleGroup.toUpperCase());
@@ -213,7 +217,7 @@ public class UserService {
         if (authNull(auth)) return;
         Exception e = event.getException();
         String userId = auth.getName();
-        log.info(String.format("Authentication failure [user: %s] [error: %s]", userId, e.getMessage()));
+        log.info(String.format("Authentication failure [user: %s] [error: %s]", UserEncrypt.obfuscateUser(auth.getName(),secretString), e.getMessage()));
 
         applicationEventPublisher.publishEvent(new AuthFailedEvent(
             this,
@@ -225,7 +229,7 @@ public class UserService {
         String userId = auth.getName();
 
         if (logoutStrategy != null) logoutStrategy.onLogout(userId);
-        log.info(String.format("User logged out [user: %s]", userId));
+        log.info(String.format("User logged out [user: %s]", UserEncrypt.obfuscateUser(userId,secretString)));
 
         HttpSession session = ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest().getSession();
         session.setAttribute(ATTRIBUTE_USER_INITIATED_LOGOUT, "true"); // mark that the user initiated the logout
@@ -242,7 +246,7 @@ public class UserService {
         if (authNull(auth)) return;
         String userId = auth.getName();
 
-        log.info(String.format("User logged in [user: %s]", userId));
+        log.info(String.format("User logged in [user: %s]", UserEncrypt.obfuscateUser(userId,secretString)));
 
         applicationEventPublisher.publishEvent(new UserLoginEvent(
             this,
@@ -266,7 +270,7 @@ public class UserService {
                 String userId = securityContext.getAuthentication().getName();
                 if (logoutStrategy != null) logoutStrategy.onLogout(userId);
 
-                log.info(String.format("User logged out [user: %s]", userId));
+                log.info(String.format("User logged out [user: %s]", UserEncrypt.obfuscateUser(userId,secretString)));
                 applicationEventPublisher.publishEvent(new UserLogoutEvent(
                     this,
                     userId,
@@ -277,7 +281,7 @@ public class UserService {
                 if (userId == null) return;
                 if (logoutStrategy != null) logoutStrategy.onLogout(userId);
 
-                log.info(String.format("Anonymous user logged out [user: %s]", userId));
+                log.info(String.format("User logged out [user: %s]", UserEncrypt.obfuscateUser(userId,secretString)));
                 applicationEventPublisher.publishEvent(new UserLogoutEvent(
                     this,
                     userId,

@@ -19,14 +19,12 @@
  * along with this program.  If not, see <http://www.apache.org/licenses/>
  */
 package eu.openanalytics.containerproxy.test.helpers;
-
 import eu.openanalytics.containerproxy.ContainerProxyApplication;
 import org.springframework.context.ApplicationContextInitializer;
-import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.env.MutablePropertySources;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.env.PropertiesPropertySource;
 import org.springframework.core.env.PropertySource;
-
 import javax.annotation.Nonnull;
 
 public class PropertyOverrideContextInitializer implements ApplicationContextInitializer<ConfigurableApplicationContext> {

@@ -34,6 +34,8 @@ import javax.inject.Inject;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.concurrent.TimeUnit;
+import eu.openanalytics.containerproxy.security.UserEncrypt;
+import org.springframework.core.env.Environment;
 
 /**
  * This service releases proxies which reached their max-lifetime.
@@ -43,9 +45,13 @@ public class ProxyMaxLifetimeService {
 
     private final Logger log = LoggerFactory.getLogger(getClass());
     private final StructuredLogger slog = new StructuredLogger(log);
+    private String secretString;
 
     @Inject
     private ProxyService proxyService;
+
+    @Inject
+    private Environment environment;
 
     @Inject
     private IProxyReleaseStrategy releaseStrategy;
@@ -59,11 +65,16 @@ public class ProxyMaxLifetimeService {
     }
 
     private void performCleanup() {
+        secretString = environment.getProperty("proxy.user-encrypt-key");
         for (Proxy proxy : proxyService.getAllProxies()) {
             if (mustBeReleased(proxy)) {
                 String uptime = DurationFormatUtils.formatDurationWords(
                     System.currentTimeMillis() - proxy.getStartupTimestamp(),
                     true, false);
+                log.info(String.format(
+                    "Forcefully releasing proxy because it reached the max lifetime [user: %s] [spec: %s] [id: %s] [uptime: %s]", 
+                    UserEncrypt.obfuscateUser(proxy.getUserId(),secretString), proxy.specId, proxy.getId(), uptime)
+                    );
                 slog.info(proxy, String.format("Forcefully releasing proxy because it reached the max lifetime [uptime: %s]", uptime));
                 releaseStrategy.releaseProxy(proxy);
             }

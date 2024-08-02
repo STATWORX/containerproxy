@@ -297,8 +297,39 @@ public class OpenIDAuthenticationBackend implements IAuthenticationBackend {
                         mappedAuthorities.addAll(parseClaims(idToken, rolesClaimName));
                     }
                     OidcUserInfo userInfo = ((OidcUserAuthority) auth).getUserInfo();
+                    if (log.isDebugEnabled()) {
+                        for (Map.Entry<String, Object> entry : userInfo.getClaims().entrySet()) {
+                            log.debug(String.format("Found claim in UserInfo response %s: %s", entry.getKey(), entry.getValue()));
+                        }
+                    }
                     if (userInfo != null) {
                         mappedAuthorities.addAll(parseClaims(userInfo, rolesClaimName));
+                    }
+
+                    Object claimValue = idToken.getClaims().get(rolesClaimName);
+                    String logInfo = "Role Claims";
+                    List<String> roles = parseRolesClaim(log, logInfo, rolesClaimName, claimValue);
+                    List<String> userInfoRoles = userInfo.getClaimAsStringList(rolesClaimName);
+                    if (userInfoRoles != null){
+                        if (roles == null){
+                            roles = userInfoRoles;
+                        }else{
+                            roles.addAll(userInfoRoles);
+                        }
+                    }else{
+                        String userInfoRole = userInfo.getClaimAsString(rolesClaimName);
+                        if (userInfoRole != null){
+                            if (roles == null){
+                                roles = new ArrayList<>();
+                            }
+                            roles.add(userInfoRole);
+                        }
+                    }
+
+                    if (roles == null) continue;
+                    for (String role: roles) {
+                        String mappedRole = role.toUpperCase().startsWith("ROLE_") ? role : "ROLE_" + role;
+                        mappedAuthorities.add(new SimpleGrantedAuthority(mappedRole.toUpperCase()));
                     }
                 }
             }

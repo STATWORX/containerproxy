@@ -23,7 +23,6 @@ package eu.openanalytics.containerproxy.ui;
 import eu.openanalytics.containerproxy.api.BaseController;
 import eu.openanalytics.containerproxy.auth.IAuthenticationBackend;
 import eu.openanalytics.containerproxy.auth.impl.OpenIDAuthenticationBackend;
-import eu.openanalytics.containerproxy.auth.impl.SAMLAuthenticationBackend;
 import eu.openanalytics.containerproxy.event.AuthFailedEvent;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.context.ApplicationEventPublisher;
@@ -67,8 +66,6 @@ public class AuthController extends BaseController {
 
         if (auth instanceof OpenIDAuthenticationBackend) {
             return new RedirectView(((OpenIDAuthenticationBackend) auth).getLoginRedirectURI());
-        } else if (auth instanceof SAMLAuthenticationBackend) {
-            return new RedirectView(((SAMLAuthenticationBackend) auth).getLoginRedirectURI());
         } else {
             return "login";
         }
