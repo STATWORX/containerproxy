@@ -161,10 +161,15 @@ public class UserService {
 	}
 	
 	public boolean isAdmin(Authentication auth) {
-		if (!authBackend.hasAuthorization() || auth == null) {
+		boolean useHeaderAuth;
+		if (!authBackend.hasAuthorization() ) {
+			return false;
+		}else if (useHeaderAuth == true|| auth == null){
+			return true;
+		}else{
 			return false;
 		}
-
+	}
 		for (String adminGroup: getAdminGroups()) {
 			if (isMember(auth, adminGroup)) {
 				return true;

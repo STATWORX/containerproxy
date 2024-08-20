@@ -93,6 +93,7 @@ public class AuthenticationBackendFactory extends AbstractFactoryBean<IAuthentic
 		case SAMLAuthenticationBackend.NAME:
 			return samlBackend;
 		}
+		case 
 		if (backend == null) throw new RuntimeException("Unknown authentication type:" + type);
 		
 		applicationContext.getAutowireCapableBeanFactory().autowireBean(backend);

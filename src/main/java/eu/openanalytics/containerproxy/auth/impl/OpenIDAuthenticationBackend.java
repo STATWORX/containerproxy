@@ -216,22 +216,46 @@ public class OpenIDAuthenticationBackend implements IAuthenticationBackend {
 				for (GrantedAuthority auth: authorities) {
 					if (auth instanceof OidcUserAuthority) {
 						OidcIdToken idToken = ((OidcUserAuthority) auth).getIdToken();
-						
 						if (log.isDebugEnabled()) {
 							String lineSep = System.getProperty("line.separator");
 							String claims = idToken.getClaims().entrySet().stream()
-								.map(e -> String.format("%s -> %s", e.getKey(), e.getValue()))
-								.collect(Collectors.joining(lineSep));
+							.map(e -> String.format("%s -> %s", e.getKey(), e.getValue()))
+							.collect(Collectors.joining(lineSep));
 							log.debug(String.format("Checking for roles in claim '%s'. Available claims in ID token (%d):%s%s",
-									rolesClaimName, idToken.getClaims().size(), lineSep, claims));
+							rolesClaimName, idToken.getClaims().size(), lineSep, claims));
 						}
 						
 						Object claimValue = idToken.getClaims().get(rolesClaimName);
-
-						for (String role: parseRolesClaim(log, rolesClaimName, claimValue)) {
+						log.info("Call Userinfo endpoint" );
+						OidcUserInfo userInfo = ((OidcUserAuthority) auth).getUserInfo();  // This is not working with the current setup, reason unkown
+						log.info("userInfo: " + userInfo );
+						List<String> roles = parseRolesClaim(log, rolesClaimName, claimValue);
+						List<String> userInfoRoles = userInfo.getClaimAsStringList(rolesClaimName);
+						log.info("userInfoRoles :" + userInfoRoles);
+						if (userInfoRoles != null){
+							if (roles == null){
+								roles = userInfoRoles;
+							}else{
+								roles.addAll(userInfoRoles);
+							}
+						}else{
+							String userInfoRole = userInfo.getClaimAsString(rolesClaimName);
+							log.info("userInfoRole :" + userInfoRole);
+							if (userInfoRole != null){
+								if (roles == null){
+									roles = new ArrayList<>();
+								}
+								roles.add(userInfoRole);
+							}else{
+							log.warn("The Userinfo endpoint does not contain the claim '{}'", rolesClaimName);
+							}
+						}
+						if (roles == null) continue;
+						log.info("Roles found {}", roles);
+						for (String role: roles) {
 							String mappedRole = role.toUpperCase().startsWith("ROLE_") ? role : "ROLE_" + role;
 							mappedAuthorities.add(new SimpleGrantedAuthority(mappedRole.toUpperCase()));
-						}
+						}	
 					}
 				}
 				return mappedAuthorities;
@@ -298,6 +322,7 @@ public class OpenIDAuthenticationBackend implements IAuthenticationBackend {
 					throw ex;
 				}
 
+				log.info("User info: " + user.getUserInfo());
 				String nameAttributeKey = environment.getProperty("proxy.openid.username-attribute", "email");
 				return new CustomNameOidcUser(new HashSet<>(user.getAuthorities()),
 						user.getIdToken(),
