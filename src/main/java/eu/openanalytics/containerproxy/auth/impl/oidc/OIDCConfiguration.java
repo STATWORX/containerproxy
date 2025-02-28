@@ -39,7 +39,6 @@ public class OIDCConfiguration {
 
     @Bean
     public JwtDecoderFactory<ClientRegistration> customJwtDecoderFactory(){
-        String acrValue = environment.getProperty("openid.acr-value");
         OidcIdTokenDecoderFactory factory = new OidcIdTokenDecoderFactory();
         factory.setJwtValidatorFactory(clientRegistration -> new AcrTokenValidator(clientRegistration, environment.getProperty("proxy.openid.acr-value")));
         return factory;

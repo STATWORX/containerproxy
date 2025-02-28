@@ -71,7 +71,6 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 
 import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
 import javax.inject.Inject;
 import java.time.Duration;
 import java.time.Instant;
@@ -665,10 +664,6 @@ public class ProxySharingScaler implements AutoCloseable {
 
     private void logWarn(String message) {
         logger.warn("[{}] " + message, kv("specId", proxySpec.getId()));
-    }
-
-    private void logError(String message, Throwable throwable) {
-        logger.error("[{}] " + message, kv("specId", proxySpec.getId()), throwable);
     }
 
     private void debug(DelegateProxy delegateProxy, String message) {

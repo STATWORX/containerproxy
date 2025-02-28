@@ -12,7 +12,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.2.6</version>
+        <version>3.4.3</version>
         <relativePath/>
     </parent>
 
@@ -21,7 +21,7 @@
         <java.version>17</java.version>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
-        <spring-boot.version>3.2.6</spring-boot.version>
+        <spring-boot.version>3.4.3</spring-boot.version>
         <aws.java.sdk.version>2.23.12</aws.java.sdk.version>
     </properties>
 
@@ -286,6 +286,10 @@
         <dependency>
             <groupId>io.micrometer</groupId>
             <artifactId>micrometer-registry-influx</artifactId>
+        </dependency>
+        <dependency>
+        <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-core</artifactId>
         </dependency>
 
         <!-- Kubernetes -->

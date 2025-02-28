@@ -22,8 +22,6 @@ package eu.openanalytics.containerproxy.backend.dispatcher.proxysharing.store.re
 
 import eu.openanalytics.containerproxy.backend.dispatcher.proxysharing.Seat;
 import eu.openanalytics.containerproxy.backend.dispatcher.proxysharing.store.ISeatStore;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.core.BoundHashOperations;
 import org.springframework.data.redis.core.BoundSetOperations;
@@ -133,7 +131,7 @@ public class RedisSeatStore implements ISeatStore {
 
         private final String key;
         private final Object[] seatIds;
-        private final Logger logger = LoggerFactory.getLogger(getClass());
+        
 
         public UnclaimedSeatRemover(String key, Set<String> seatIds) {
             this.key = key;

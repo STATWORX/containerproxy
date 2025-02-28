@@ -67,14 +67,15 @@ public class ShinyProxyClient {
     }
 
     public String startProxy(String specId, Map<String, String> parameters, boolean wait) {
-        RequestBody body = RequestBody.create("", null);
+        RequestBody body = RequestBody.create(null, "");
         if (parameters != null) {
             ObjectMapper objectMapper = new ObjectMapper();
             try {
                 body = RequestBody.create(
+                    MediaType.get("application/json"),
                     objectMapper.writeValueAsString(new HashMap<String, Object>() {{
                         put("parameters", parameters);
-                    }}), MediaType.get("application/json"));
+                    }}));
             } catch (JsonProcessingException e) {
                 throw new TestHelperException("JSON error", e);
             }
@@ -96,11 +97,12 @@ public class ShinyProxyClient {
     }
 
     public JsonObject startProxyError(String specId, Map<String, String> parameters) {
-        RequestBody body = RequestBody.create("", null);
+        RequestBody body = RequestBody.create(null, "");
         if (parameters != null) {
             ObjectMapper objectMapper = new ObjectMapper();
             try {
-                body = RequestBody.create(objectMapper.writeValueAsString(Map.of("parameters", parameters)), MediaType.get("application/json"));
+                body = RequestBody.create(MediaType.get("application/json"), 
+                    objectMapper.writeValueAsString(Map.of("parameters", parameters)));
             } catch (JsonProcessingException e) {
                 throw new TestHelperException("JSON error", e);
             }
@@ -141,7 +143,7 @@ public class ShinyProxyClient {
 
     public void stopProxy(String proxyId) {
         Request request = new Request.Builder()
-            .put(RequestBody.create("{\"status\":\"Stopping\"}", JSON))
+            .put(RequestBody.create(JSON, "{\"status\":\"Stopping\"}"))
             .url(baseUrl + "/api/proxy/" + proxyId + "/status")
             .build();
 

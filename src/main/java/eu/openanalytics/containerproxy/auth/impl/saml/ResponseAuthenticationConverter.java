@@ -43,7 +43,7 @@ import static eu.openanalytics.containerproxy.auth.impl.saml.SAMLConfiguration.P
 import static eu.openanalytics.containerproxy.auth.impl.saml.SAMLConfiguration.PROP_NAME_ATTRIBUTE;
 import static eu.openanalytics.containerproxy.auth.impl.saml.SAMLConfiguration.PROP_ROLES_ATTRIBUTE;
 
-@SuppressWarnings("deprecation")
+
 public class ResponseAuthenticationConverter implements Converter<OpenSaml4AuthenticationProvider.ResponseToken, AbstractAuthenticationToken> {
 
     private final Boolean logAttributes;

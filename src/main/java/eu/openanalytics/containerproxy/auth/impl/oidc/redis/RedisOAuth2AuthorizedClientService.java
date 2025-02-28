@@ -49,6 +49,7 @@ public class RedisOAuth2AuthorizedClientService implements OAuth2AuthorizedClien
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public <T extends OAuth2AuthorizedClient> T loadAuthorizedClient(String clientRegistrationId, String principalName) {
         logger.debug("Load AuthorizedClient for {}", principalName);
         return (T) ops.get(redisKey + '_' + clientRegistrationId, principalName);

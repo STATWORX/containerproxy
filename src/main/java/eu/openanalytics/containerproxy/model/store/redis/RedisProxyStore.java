@@ -24,7 +24,7 @@ import eu.openanalytics.containerproxy.event.ProxyStopEvent;
 import eu.openanalytics.containerproxy.model.runtime.Proxy;
 import eu.openanalytics.containerproxy.model.store.IProxyStore;
 import eu.openanalytics.containerproxy.service.IdentifierService;
-import eu.openanalytics.containerproxy.util.ProxyHashMap;
+
 import eu.openanalytics.containerproxy.util.ProxyMappingManager;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -38,7 +38,6 @@ import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class RedisProxyStore implements IProxyStore {
 
@@ -52,10 +51,9 @@ public class RedisProxyStore implements IProxyStore {
     @Inject
     private IdentifierService identifierService;
     private String redisKey;
-    private HashOperations<String, String, Proxy> ops; // TODO refactor to bound?
+    private HashOperations<String, String, Proxy> ops;
     private SetOperations<String, String> userProxyOps;
 
-    private final ConcurrentHashMap<String, Proxy> cache = ProxyHashMap.create();
     private String userProxyRedisKey;
 
     @PostConstruct
@@ -98,7 +96,6 @@ public class RedisProxyStore implements IProxyStore {
 
     @Override
     public Proxy getProxy(String proxyId) {
-        // TODO maybe use a cache for this (only for Up Proxies), first check how much this is used
         Proxy proxy = ops.get(redisKey, proxyId);
         updateMappings(proxyId, proxy);
         return proxy;

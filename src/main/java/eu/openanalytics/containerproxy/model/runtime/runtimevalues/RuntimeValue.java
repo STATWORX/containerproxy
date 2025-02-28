@@ -52,6 +52,7 @@ public class RuntimeValue {
         return key.serializeToString(getObject());
     }
 
+    @SuppressWarnings("unchecked")
     public <T> T getObject() {
         return (T) getObject(key.getClazz());
     }

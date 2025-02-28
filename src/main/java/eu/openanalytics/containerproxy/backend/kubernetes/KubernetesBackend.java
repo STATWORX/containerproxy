@@ -75,8 +75,8 @@ import io.fabric8.kubernetes.api.model.VolumeBuilder;
 import io.fabric8.kubernetes.api.model.VolumeMount;
 import io.fabric8.kubernetes.api.model.VolumeMountBuilder;
 import io.fabric8.kubernetes.client.ConfigBuilder;
-import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClient;
+import io.fabric8.kubernetes.client.KubernetesClientBuilder;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.kubernetes.client.dsl.LogWatch;
 import io.fabric8.kubernetes.client.dsl.NonNamespaceOperation;
@@ -85,7 +85,8 @@ import io.fabric8.kubernetes.client.dsl.base.PatchContext;
 import io.fabric8.kubernetes.client.dsl.base.PatchType;
 import io.fabric8.kubernetes.client.readiness.Readiness;
 import io.fabric8.kubernetes.client.utils.Serialization;
-import org.apache.commons.compress.utils.IOUtils;
+// import org.apache.commons.compress.utils.IOUtils;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.util.Pair;
@@ -173,7 +174,7 @@ public class KubernetesBackend extends AbstractContainerBackend {
             if (Files.exists(certFilePath)) configBuilder.withClientKeyFile(certFilePath.toString());
         }
 
-        initialize(new DefaultKubernetesClient(configBuilder.build()));
+        initialize(new KubernetesClientBuilder().withConfig(configBuilder.build()).build());
     }
 
     public void initialize(KubernetesClient client) {
@@ -337,10 +338,10 @@ public class KubernetesBackend extends AbstractContainerBackend {
             proxyStartupLogBuilder.startingContainer(initialContainer.getIndex());
 
             // create and start the pod
-            Pod startedPod = kubeClient.pods().inNamespace(effectiveKubeNamespace).create(patchedPod);
+            Pod startedPod = kubeClient.pods().inNamespace(effectiveKubeNamespace).resource(patchedPod).create();
 
             boolean podReady = Retrying.retry((currentAttempt, maxAttempts) -> {
-                if (!Readiness.getInstance().isReady(kubeClient.resource(startedPod).fromServer().get())) {
+                if (!Readiness.getInstance().isReady(kubeClient.resource(startedPod).get())) {
                     if (currentAttempt > 10 && log != null) {
                         slog.info(proxy, String.format("Kubernetes Pod not ready yet, trying again (%d/%d)", currentAttempt, maxAttempts));
                     }
@@ -351,14 +352,14 @@ public class KubernetesBackend extends AbstractContainerBackend {
 
             if (!podReady) {
                 // check a final time whether the pod is ready
-                if (!Readiness.getInstance().isReady(kubeClient.resource(startedPod).fromServer().get())) {
+                if (!Readiness.getInstance().isReady(kubeClient.resource(startedPod).get())) {
                     logKubernetesWarnings(proxy, startedPod);
                     throw new ContainerFailedToStartException("Kubernetes Pod did not start in time", null, rContainerBuilder.build());
                 }
             }
 
             proxyStartupLogBuilder.containerStarted(initialContainer.getIndex());
-            Pod pod = kubeClient.resource(startedPod).fromServer().get();
+            Pod pod = kubeClient.resource(startedPod).get();
 
             parseKubernetesEvents(spec.getIndex(), pod, proxyStartupLogBuilder);
 
@@ -372,7 +373,7 @@ public class KubernetesBackend extends AbstractContainerBackend {
                     .toList();
 
                 Service startupService = kubeClient.services().inNamespace(effectiveKubeNamespace)
-                    .create(new ServiceBuilder()
+                    .resource(new ServiceBuilder()
                         .withApiVersion(apiVersion)
                         .withKind("Service")
                         .withNewMetadata()
@@ -384,12 +385,12 @@ public class KubernetesBackend extends AbstractContainerBackend {
                         .withType("NodePort")
                         .withPorts(servicePorts)
                         .endSpec()
-                        .build());
+                        .build()).create();
 
                 // Workaround: waitUntilReady appears to be buggy.
-                Retrying.retry((currentAttempt, maxAttempts) -> isServiceReady(kubeClient.resource(startupService).fromServer().get()), 60_000);
+                Retrying.retry((currentAttempt, maxAttempts) -> isServiceReady(kubeClient.resource(startupService).get()), 60_000);
 
-                service = kubeClient.resource(startupService).fromServer().get();
+                service = kubeClient.resource(startupService).get();
                 portBindings = service.getSpec().getPorts().stream()
                     .collect(Collectors.toMap(ServicePort::getPort, ServicePort::getNodePort));
             }
@@ -546,21 +547,21 @@ public class KubernetesBackend extends AbstractContainerBackend {
             policy = "CreateOnce";
         }
         if (policy.equalsIgnoreCase("CreateOnce")) {
-            if (kubeClient.resource(resource).fromServer().get() == null) {
+            if (kubeClient.resource(resource).get() == null) {
                 client.resource(resource).create();
             }
         } else if (policy.equalsIgnoreCase("Patch")) {
-            if (kubeClient.resource(resource).fromServer().get() == null) {
+            if (kubeClient.resource(resource).get() == null) {
                 client.resource(resource).create();
             } else {
                 client.withName(resource.getMetadata().getName()).patch(PatchContext.of(PatchType.JSON_MERGE), resource);
             }
         } else if (policy.equalsIgnoreCase("Delete")) {
-            if (kubeClient.resource(resource).fromServer().get() != null) {
+            if (kubeClient.resource(resource).get() != null) {
                 kubeClient.resource(resource).withGracePeriod(0).delete();
             }
         } else if (policy.equalsIgnoreCase("Replace")) {
-            if (kubeClient.resource(resource).fromServer().get() != null) {
+            if (kubeClient.resource(resource).get() != null) {
                 kubeClient.resource(resource).withGracePeriod(0).delete();
             }
             client.resource(resource).create();
@@ -577,7 +578,7 @@ public class KubernetesBackend extends AbstractContainerBackend {
     private List<GenericKubernetesResource> parseAdditionalManifests(Proxy proxy, String namespace, List<String> manifests, Boolean persistent) throws JsonProcessingException {
         ArrayList<GenericKubernetesResource> result = new ArrayList<>();
         for (String manifest : manifests) {
-            GenericKubernetesResource object = Serialization.yamlMapper().readValue(manifest, GenericKubernetesResource.class);
+            GenericKubernetesResource object = Serialization.unmarshal(manifest, GenericKubernetesResource.class);
 
             GenericKubernetesResource fullObject = kubeClient
                 .genericKubernetesResources(object.getApiVersion(), object.getKind())
