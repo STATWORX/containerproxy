@@ -296,7 +296,13 @@
         <dependency>
             <groupId>io.fabric8</groupId>
             <artifactId>kubernetes-client</artifactId>
-            <version>6.10.0</version>
+            <version>6.13.5</version>
+        </dependency>
+        <!-- Override okio transitive dependency to fix CVE -->
+        <dependency>
+            <groupId>com.squareup.okio</groupId>
+            <artifactId>okio</artifactId>
+            <version>1.17.6</version>
         </dependency>
 
         <!-- UI frameworks -->
